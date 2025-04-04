@@ -85,8 +85,27 @@ $rupture: map.merge(
 }
 
 @function _strip-units($number) {
-  $number: _number($number);
-  @return math.div($number, $number * 0 + 1);
+  // First validate that the input is valid before processing
+  @if $number == null {
+    @return 0;
+  }
+  @if meta.type-of($number) != 'number' and meta.type-of($number) != 'string' {
+    @return 0; // Return a safe default
+  }
+
+  // Only apply operations if the value is valid
+  @if meta.type-of($number) == 'number' {
+    // If already a number, strip its units safely
+    @if math.is-unitless($number) {
+      @return $number;
+    } @else {
+      @return math.div($number, $number * 0 + 1);
+    }
+  } @else {
+    // If it's a string, try to convert it first
+    $converted: _number($number);
+    @return math.div($converted, $converted * 0 + 1);
+  }
 }
 
 @function _is-string($val) {
@@ -107,19 +126,49 @@ $rupture: map.merge(
   $value,
   $context: map.get($rupture, base-font-size)
 ) {
-  $from-unit: math.unit(_number($value));
-  @if ($to-unit==$from-unit) {
+  // First validate that $value is a valid input type
+  @if meta.type-of($value) != 'number' and meta.type-of($value) != 'string' {
+    @return 0px; // Return a default value if $value is of invalid type
+  }
+
+  // Only apply unit operations if the value is valid
+  @if meta.type-of($value) == 'number' {
+    $from-unit: if(math.is-unitless($value), '', math.unit($value));
+  } @else {
+    // Try to extract information from string
+    $from-unit: '';
+    // Check for common units in the string without using @break
+    @if string.index($value, 'px') != null {
+      $from-unit: 'px';
+    } @else if string.index($value, 'em') != null {
+      $from-unit: 'em';
+    } @else if string.index($value, 'rem') != null {
+      $from-unit: 'rem';
+    } @else if string.index($value, '%') != null {
+      $from-unit: '%';
+    } @else if string.index($value, 'vh') != null {
+      $from-unit: 'vh';
+    } @else if string.index($value, 'vw') != null {
+      $from-unit: 'vw';
+    }
+  }
+
+  @if $from-unit == $to-unit or $from-unit == '' {
     @return $value;
   }
-  @if ($to-unit== 'em' or $to-unit== 'rem') {
-    @if ($from-unit== 'em' or $from-unit== 'rem') {
+
+  @if ($to-unit == 'em' or $to-unit == 'rem') {
+    @if ($from-unit == 'em' or $from-unit == 'rem') {
       @return $value;
     }
     @return '#{math.div(_strip-units($value), _strip-units($context))}#{$to-unit}';
   }
-  @if ($to-unit== 'px') {
+  @if ($to-unit == 'px') {
     @return '#{_strip-units($value) * _strip-units($context)}px';
   }
+
+  // Default return
+  @return $value;
 }
 
 @function _on-scale($n) {
@@ -154,14 +203,14 @@ $rupture: map.merge(
   @if meta.type-of($n) == 'number' and math.unit($n) != '' {
     $shift-unit: math.unit($n);
   } @else if meta.type-of($n) == 'string' {
-    // Try to extract unit from string
-    @if str-index($n, 'px') != null {
+    // Try to extract unit from string without using @break
+    @if string.index($n, 'px') != null {
       $shift-unit: 'px';
-    } @else if str-index($n, 'em') != null {
+    } @else if string.index($n, 'em') != null {
       $shift-unit: 'em';
-    } @else if str-index($n, 'rem') != null {
+    } @else if string.index($n, 'rem') != null {
       $shift-unit: 'rem';
-    } @else if str-index($n, '%') != null {
+    } @else if string.index($n, '%') != null {
       $shift-unit: '%';
     } @else {
       $shift-unit: 'px'; // Default to px if unable to determine
