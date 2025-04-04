@@ -1,5 +1,7 @@
 @use 'sass:math';
 @use 'sass:map';
+@use 'sass:list';
+@use 'sass:meta';
 $base-font-size: 16px !default;
 $rasterise-media-queries: false !default;
 $rupture: (
@@ -26,18 +28,18 @@ $rupture: map.merge(
   $strings: 'px' 'cm' 'mm' '%' 'ch' 'pica' 'in' 'em' 'rem' 'pt' 'pc' 'ex' 'vw'
     'vh' 'vmin' 'vmax';
   $units: 1px 1cm 1mm 1% 1ch 1pica 1in 1em 1rem 1pt 1pc 1ex 1vw 1vh 1vmin 1vmax;
-  $index: index($strings, $unit);
+  $index: list.index($strings, $unit);
   @if not $index {
     @warn "Unknown unit `#{$unit}`.";
     @return false;
   }
-  @return $number * nth($units, $index);
+  @return $number * list.nth($units, $index);
 }
 
 @function _number($value) {
-  @if type-of($value) == 'number' {
+  @if meta.type-of($value) == 'number' {
     @return $value;
-  } @else if type-of($value) != 'string' {
+  } @else if meta.type-of($value) != 'string' {
     $_: log('Value for `to-number` should be a number or a string.');
   }
   $result: 0;
@@ -57,7 +59,7 @@ $rupture: map.merge(
   );
   @for $i from if($minus, 2, 1) through str-length($value) {
     $character: str-slice($value, $i, $i);
-    @if not(index(map.keys($numbers), $character) or $character== '.') {
+    @if not(list.index(map.keys($numbers), $character) or $character== '.') {
       @return _to-length(if($minus, -$result, $result), str-slice($value, $i));
     }
     @if $character== '.' {
@@ -78,13 +80,13 @@ $rupture: map.merge(
 }
 
 @function _is-string($val) {
-  @return type-of($val) == 'string';
+  @return meta.type-of($val) == 'string';
 }
 
 @function _get-scale-number($scale-name) {
   @each $list-item in map.get($rupture, scale-names) {
     @if ($list-item==$scale-name) {
-      @return index(map.get($rupture, scale-names), $list-item);
+      @return list.index(map.get($rupture, scale-names), $list-item);
     }
   }
   @return false;
@@ -95,7 +97,7 @@ $rupture: map.merge(
   $value,
   $context: map.get($rupture, base-font-size)
 ) {
-  $from-unit: unit(_number($value));
+  $from-unit: math.unit(_number($value));
   @if ($to-unit==$from-unit) {
     @return $value;
   }
@@ -111,11 +113,11 @@ $rupture: map.merge(
 }
 
 @function _on-scale($n) {
-  @return unit(_number($n)) == '';
+  @return math.unit(_number($n)) == '';
 }
 
 @function _larger-than-scale($n) {
-  @return ($n >=(length(map.get($rupture, scale)))) and _on-scale($n);
+  @return ($n >=(list.length(map.get($rupture, scale)))) and _on-scale($n);
 }
 
 @function _is-zero($n) {
@@ -123,18 +125,18 @@ $rupture: map.merge(
 }
 
 @function _overlap-shift($anti-overlap, $n) {
-  $shift-unit: unit(_number($n));
+  $shift-unit: math.unit(_number($n));
   @if not $anti-overlap {
     $anti-overlap: 0px;
   }
   @if ($anti-overlap==true) {
     $anti-overlap: 1px;
   }
-  @if (length($anti-overlap) ==1) {
+  @if (list.length($anti-overlap) ==1) {
     @return _convert-to($shift-unit, $anti-overlap);
   }
   @each $val in $anti-overlap {
-    @if (unit(_number($val)) ==$shift-unit) {
+    @if (math.unit(_number($val)) ==$shift-unit) {
       @return $val;
     }
   }
@@ -210,11 +212,11 @@ $rupture: map.merge(
   $_min: if(
     _is-zero($min) or (not _on-scale($min)),
     $min,
-    nth(map.get($rupture, scale), $min)
+    list.nth(map.get($rupture, scale), $min)
   );
   $_max: if(
     _is-string($initial_max) and _on-scale($max),
-    nth(map.get($rupture, scale), $max + 1),
+    list.nth(map.get($rupture, scale), $max + 1),
     $max
   );
   @if (map.get($rupture, rasterise-media-queries)) {
@@ -296,7 +298,7 @@ $rupture: map.merge(
 ) {
   @include between(
     $scale-point,
-    length(map.get($rupture, scale)),
+    list.length(map.get($rupture, scale)),
     $anti-overlap,
     $density,
     $orientation,
